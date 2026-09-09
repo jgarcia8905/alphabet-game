@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Memorama del Abecedario</title>
+<title>Memorama del Abecedario / Alphabet Memory Game</title>
 <meta name="theme-color" content="#bfe0ff">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -45,7 +45,7 @@
     color: #2c4a6b;
     letter-spacing: 0.5px;
   }
-  #new-game {
+  #new-game, #lang-switch {
     border: none;
     background: #2c4a6b;
     color: white;
@@ -56,8 +56,51 @@
     box-shadow: 0 3px 8px rgba(30, 60, 100, 0.3);
     cursor: pointer;
   }
-  #new-game:active {
+  #lang-switch {
+    background: #6ec3f4;
+    margin-left: 8px;
+  }
+  #new-game:active, #lang-switch:active {
     transform: scale(0.95);
+  }
+  .header-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  #lang-screen {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 20px;
+  }
+  #lang-screen h1 {
+    margin: 0 0 10px;
+    font-size: 1.4rem;
+    color: #2c4a6b;
+    text-align: center;
+  }
+  .lang-btn {
+    border: none;
+    background: white;
+    color: #2c4a6b;
+    font-size: 1.3rem;
+    font-weight: 700;
+    padding: 22px 40px;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(30, 60, 100, 0.3);
+    cursor: pointer;
+    width: 260px;
+  }
+  .lang-btn:active {
+    transform: scale(0.96);
+  }
+  .hidden {
+    display: none !important;
   }
 
   #grid {
@@ -181,38 +224,77 @@
 </head>
 <body>
 
-<header>
-  <h1>Memorama del Abecedario 🔤</h1>
-  <button id="new-game">Nuevo juego</button>
+<div id="lang-screen">
+  <h1>Elige un idioma<br>Choose a language</h1>
+  <button class="lang-btn" data-lang="es">🇪🇸 Español</button>
+  <button class="lang-btn" data-lang="en">🇬🇧 English</button>
+</div>
+
+<header class="hidden">
+  <h1 id="title">Memorama del Abecedario 🔤</h1>
+  <div class="header-buttons">
+    <button id="new-game">Nuevo juego</button>
+    <button id="lang-switch">🌐</button>
+  </div>
 </header>
 
-<div id="grid"></div>
+<div id="grid" class="hidden"></div>
 
 <div id="win-banner">
   <div class="box">
-    <p>¡Muy bien! 🎉</p>
+    <p id="win-msg">¡Muy bien! 🎉</p>
     <button id="play-again">Jugar otra vez</button>
   </div>
 </div>
 
 <script>
-  const LETTER_INFO = {
-    A: "a", B: "be", C: "ce", D: "de", E: "e", F: "efe",
-    G: "ge", H: "hache", I: "i", J: "jota", K: "ka", L: "ele",
-    M: "eme", N: "ene", "Ñ": "eñe", O: "o", P: "pe", Q: "cu",
-    R: "erre", S: "ese", T: "te", U: "u", V: "ve", W: "doble u",
-    X: "equis", Y: "ye", Z: "zeta"
+  const LANGS = {
+    es: {
+      title: "Memorama del Abecedario 🔤",
+      newGameBtn: "Nuevo juego",
+      winMsg: "¡Muy bien! 🎉",
+      playAgainBtn: "Jugar otra vez",
+      ttsLang: "es-MX",
+      imgFolder: "images",
+      letters: {
+        A: "a", B: "be", C: "ce", D: "de", E: "e", F: "efe",
+        G: "ge", H: "hache", I: "i", J: "jota", K: "ka", L: "ele",
+        M: "eme", N: "ene", "Ñ": "eñe", O: "o", P: "pe", Q: "cu",
+        R: "erre", S: "ese", T: "te", U: "u", V: "ve", W: "doble u",
+        X: "equis", Y: "ye", Z: "zeta"
+      }
+    },
+    en: {
+      title: "Alphabet Memory Game 🔤",
+      newGameBtn: "New game",
+      winMsg: "Great job! 🎉",
+      playAgainBtn: "Play again",
+      ttsLang: "en-US",
+      imgFolder: "images/en",
+      letters: {
+        A: "A", B: "B", C: "C", D: "D", E: "E", F: "F",
+        G: "G", H: "H", I: "I", J: "J", K: "K", L: "L",
+        M: "M", N: "N", O: "O", P: "P", Q: "Q",
+        R: "R", S: "S", T: "T", U: "U", V: "V", W: "W",
+        X: "X", Y: "Y", Z: "Z"
+      }
+    }
   };
-  const ALL_LETTERS = Object.keys(LETTER_INFO);
+
   const LETTER_COLORS = ["#ff8a8a", "#ffb347", "#8bd17c", "#6ec3f4"];
   const PAIRS_PER_GAME = 8;
 
   const grid = document.getElementById('grid');
   const winBanner = document.getElementById('win-banner');
+  const langScreen = document.getElementById('lang-screen');
+  const header = document.querySelector('header');
 
+  let lang = null;
+  let allLetters = [];
   let flipped = [];
   let lock = false;
   let matchedCount = 0;
+  let cards = [];
 
   function shuffle(arr) {
     const a = arr.slice();
@@ -227,7 +309,7 @@
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'es-MX';
+    utter.lang = LANGS[lang].ttsLang;
     utter.rate = 0.9;
     window.speechSynthesis.speak(utter);
   }
@@ -249,14 +331,14 @@
 
     if (card.type === 'image') {
       const img = document.createElement('img');
-      img.src = `images/${card.letter}.webp`;
+      img.src = `${LANGS[lang].imgFolder}/${card.letter}.webp`;
       img.alt = card.letter;
       img.draggable = false;
       front.appendChild(img);
     } else {
       front.classList.add('letter-face');
       front.textContent = card.letter;
-      front.style.color = LETTER_COLORS[ALL_LETTERS.indexOf(card.letter) % LETTER_COLORS.length];
+      front.style.color = LETTER_COLORS[allLetters.indexOf(card.letter) % LETTER_COLORS.length];
     }
 
     inner.appendChild(back);
@@ -267,8 +349,6 @@
     return btn;
   }
 
-  let cards = [];
-
   function newGame() {
     window.speechSynthesis.cancel();
     flipped = [];
@@ -276,7 +356,7 @@
     matchedCount = 0;
     winBanner.classList.remove('show');
 
-    const chosenLetters = shuffle(ALL_LETTERS).slice(0, PAIRS_PER_GAME);
+    const chosenLetters = shuffle(allLetters).slice(0, PAIRS_PER_GAME);
     const rawCards = [];
     chosenLetters.forEach(letter => {
       rawCards.push({ letter, type: 'image' });
@@ -297,7 +377,7 @@
     if (flipped.length === 2) return;
 
     cardEl.classList.add('flipped');
-    speak(LETTER_INFO[cards[index].letter]);
+    speak(LANGS[lang].letters[cards[index].letter]);
     flipped.push(index);
 
     if (flipped.length === 2) {
@@ -326,15 +406,41 @@
     }
   }
 
+  function selectLang(code) {
+    lang = code;
+    allLetters = Object.keys(LANGS[code].letters);
+    document.getElementById('title').textContent = LANGS[code].title;
+    document.getElementById('new-game').textContent = LANGS[code].newGameBtn;
+    document.getElementById('win-msg').textContent = LANGS[code].winMsg;
+    document.getElementById('play-again').textContent = LANGS[code].playAgainBtn;
+    document.documentElement.lang = LANGS[code].ttsLang;
+
+    langScreen.classList.add('hidden');
+    header.classList.remove('hidden');
+    grid.classList.remove('hidden');
+
+    newGame();
+  }
+
+  function showLangScreen() {
+    window.speechSynthesis.cancel();
+    winBanner.classList.remove('show');
+    langScreen.classList.remove('hidden');
+    header.classList.add('hidden');
+    grid.classList.add('hidden');
+  }
+
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => selectLang(btn.dataset.lang));
+  });
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('play-again').addEventListener('click', newGame);
+  document.getElementById('lang-switch').addEventListener('click', showLangScreen);
 
   if ('speechSynthesis' in window) {
     window.speechSynthesis.getVoices();
     window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
   }
-
-  newGame();
 </script>
 
 </body>
