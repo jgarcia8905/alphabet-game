@@ -60,7 +60,14 @@
     background: #6ec3f4;
     margin-left: 8px;
   }
-  #new-game:active, #lang-switch:active {
+  #sound-toggle {
+    background: #6ec3f4;
+    margin-left: 8px;
+  }
+  #sound-toggle.muted {
+    background: #9aa7b5;
+  }
+  #new-game:active, #lang-switch:active, #sound-toggle:active {
     transform: scale(0.95);
   }
   .header-buttons {
@@ -235,6 +242,7 @@
   <div class="header-buttons">
     <button id="new-game">Nuevo juego</button>
     <button id="lang-switch">🌐</button>
+    <button id="sound-toggle">🔊</button>
   </div>
 </header>
 
@@ -295,6 +303,7 @@
   let lock = false;
   let matchedCount = 0;
   let cards = [];
+  let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
 
   function shuffle(arr) {
     const a = arr.slice();
@@ -306,6 +315,7 @@
   }
 
   function speak(text) {
+    if (!soundEnabled) return;
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
@@ -422,6 +432,19 @@
     newGame();
   }
 
+  function updateSoundButton() {
+    const btn = document.getElementById('sound-toggle');
+    btn.textContent = soundEnabled ? '🔊' : '🔇';
+    btn.classList.toggle('muted', !soundEnabled);
+  }
+
+  function toggleSound() {
+    soundEnabled = !soundEnabled;
+    localStorage.setItem('soundEnabled', soundEnabled ? 'true' : 'false');
+    if (!soundEnabled) window.speechSynthesis.cancel();
+    updateSoundButton();
+  }
+
   function showLangScreen() {
     window.speechSynthesis.cancel();
     winBanner.classList.remove('show');
@@ -436,6 +459,8 @@
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('play-again').addEventListener('click', newGame);
   document.getElementById('lang-switch').addEventListener('click', showLangScreen);
+  document.getElementById('sound-toggle').addEventListener('click', toggleSound);
+  updateSoundButton();
 
   if ('speechSynthesis' in window) {
     window.speechSynthesis.getVoices();
