@@ -324,6 +324,23 @@
     window.speechSynthesis.speak(utter);
   }
 
+  let audioCtx = null;
+  function playFlipSound() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    } catch (e) {}
+  }
+
   function buildCardEl(card, index) {
     const btn = document.createElement('button');
     btn.className = 'card';
@@ -387,6 +404,7 @@
     if (flipped.length === 2) return;
 
     cardEl.classList.add('flipped');
+    playFlipSound();
     speak(LANGS[lang].letters[cards[index].letter]);
     flipped.push(index);
 
