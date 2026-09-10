@@ -153,6 +153,13 @@
   .card.matched {
     opacity: 0.55;
   }
+  .card.listening .card-face {
+    animation: listen-pulse 1s ease-in-out infinite;
+  }
+  @keyframes listen-pulse {
+    0%, 100% { box-shadow: 0 3px 8px rgba(30, 60, 100, 0.25); }
+    50% { box-shadow: 0 3px 8px rgba(30, 60, 100, 0.25), 0 0 0 6px rgba(110, 195, 244, 0.55); }
+  }
 
   .card-face {
     position: absolute;
@@ -341,6 +348,108 @@
     } catch (e) {}
   }
 
+  const PRONOUNCE_WAIT_MS = 5000;
+  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let micUnavailable = !SpeechRecognitionAPI;
+  let stopCurrentListen = null;
+
+  function normalizeText(s) {
+    return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '').trim();
+  }
+
+  function levenshteinDistance(a, b) {
+    const m = a.length, n = b.length;
+    const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+    for (let i = 0; i <= m; i++) dp[i][0] = i;
+    for (let j = 0; j <= n; j++) dp[0][j] = j;
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+    return dp[m][n];
+  }
+
+  function fuzzyMatches(transcript, target) {
+    const t = normalizeText(transcript);
+    const w = normalizeText(target);
+    if (!t || !w) return false;
+    if (w.length === 1) return t[0] === w;
+    if (t.includes(w) || w.includes(t)) return true;
+    return levenshteinDistance(t, w) <= Math.max(1, Math.ceil(w.length * 0.4));
+  }
+
+  function getRecognition() {
+    if (micUnavailable) return null;
+    if (!recognition) recognition = new SpeechRecognitionAPI();
+    return recognition;
+  }
+
+  function stopListening() {
+    if (stopCurrentListen) {
+      stopCurrentListen();
+      stopCurrentListen = null;
+    }
+  }
+
+  function listenForPronunciation(cardEl, word, done) {
+    cardEl.classList.add('listening');
+    let settled = false;
+    const rec = getRecognition();
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      cardEl.classList.remove('listening');
+      clearTimeout(timer);
+      if (rec) {
+        rec.onresult = null;
+        rec.onend = null;
+        rec.onerror = null;
+        try { rec.stop(); } catch (e) {}
+      }
+      stopCurrentListen = null;
+      done();
+    };
+
+    const timer = setTimeout(finish, PRONOUNCE_WAIT_MS);
+    stopCurrentListen = finish;
+
+    if (!rec) return;
+
+    rec.lang = LANGS[lang].ttsLang;
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.maxAlternatives = 3;
+
+    rec.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        for (let j = 0; j < result.length; j++) {
+          if (fuzzyMatches(result[j].transcript, word)) {
+            finish();
+            return;
+          }
+        }
+      }
+    };
+
+    rec.onend = () => {
+      if (!settled) {
+        try { rec.start(); } catch (e) {}
+      }
+    };
+
+    rec.onerror = (event) => {
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed' || event.error === 'audio-capture') {
+        micUnavailable = true;
+      }
+    };
+
+    try { rec.start(); } catch (e) {}
+  }
+
   function buildCardEl(card, index) {
     const btn = document.createElement('button');
     btn.className = 'card';
@@ -378,6 +487,7 @@
 
   function newGame() {
     window.speechSynthesis.cancel();
+    stopListening();
     flipped = [];
     lock = false;
     matchedCount = 0;
@@ -405,32 +515,40 @@
 
     cardEl.classList.add('flipped');
     playFlipSound();
-    speak(LANGS[lang].letters[cards[index].letter]);
+    const word = LANGS[lang].letters[cards[index].letter];
+    speak(word);
     flipped.push(index);
+    lock = true;
 
-    if (flipped.length === 2) {
-      const [i1, i2] = flipped;
-      if (cards[i1].letter === cards[i2].letter) {
-        lock = true;
-        setTimeout(() => {
-          grid.children[i1].classList.add('matched');
-          grid.children[i2].classList.add('matched');
-          flipped = [];
-          lock = false;
-          matchedCount++;
-          if (matchedCount === PAIRS_PER_GAME) {
-            setTimeout(() => winBanner.classList.add('show'), 500);
-          }
-        }, 350);
+    listenForPronunciation(cardEl, word, () => {
+      if (flipped.length === 2) {
+        resolvePair();
       } else {
-        lock = true;
-        setTimeout(() => {
-          grid.children[i1].classList.remove('flipped');
-          grid.children[i2].classList.remove('flipped');
-          flipped = [];
-          lock = false;
-        }, 1200);
+        lock = false;
       }
+    });
+  }
+
+  function resolvePair() {
+    const [i1, i2] = flipped;
+    if (cards[i1].letter === cards[i2].letter) {
+      setTimeout(() => {
+        grid.children[i1].classList.add('matched');
+        grid.children[i2].classList.add('matched');
+        flipped = [];
+        lock = false;
+        matchedCount++;
+        if (matchedCount === PAIRS_PER_GAME) {
+          setTimeout(() => winBanner.classList.add('show'), 500);
+        }
+      }, 350);
+    } else {
+      setTimeout(() => {
+        grid.children[i1].classList.remove('flipped');
+        grid.children[i2].classList.remove('flipped');
+        flipped = [];
+        lock = false;
+      }, 1200);
     }
   }
 
@@ -465,6 +583,7 @@
 
   function showLangScreen() {
     window.speechSynthesis.cancel();
+    stopListening();
     winBanner.classList.remove('show');
     langScreen.classList.remove('hidden');
     header.classList.add('hidden');
