@@ -45,7 +45,7 @@
     color: #2c4a6b;
     letter-spacing: 0.5px;
   }
-  #new-game, #lang-switch {
+  #new-game, #lang-switch, #mode-toggle, #sound-toggle {
     border: none;
     background: #2c4a6b;
     color: white;
@@ -56,18 +56,14 @@
     box-shadow: 0 3px 8px rgba(30, 60, 100, 0.3);
     cursor: pointer;
   }
-  #lang-switch {
-    background: #6ec3f4;
-    margin-left: 8px;
-  }
-  #sound-toggle {
+  #lang-switch, #mode-toggle, #sound-toggle {
     background: #6ec3f4;
     margin-left: 8px;
   }
   #sound-toggle.muted {
     background: #9aa7b5;
   }
-  #new-game:active, #lang-switch:active, #sound-toggle:active {
+  #new-game:active, #lang-switch:active, #mode-toggle:active, #sound-toggle:active {
     transform: scale(0.95);
   }
   .header-buttons {
@@ -186,6 +182,14 @@
     font-size: clamp(1.3rem, 7vw, 2.4rem);
     font-weight: 800;
   }
+  .card-front.word-face {
+    font-size: clamp(0.65rem, 4.5vw, 1.25rem);
+    font-weight: 800;
+    text-align: center;
+    padding: 4px;
+    line-height: 1.15;
+    word-break: break-word;
+  }
 
   #win-banner {
     position: fixed;
@@ -242,6 +246,7 @@
   <div class="header-buttons">
     <button id="new-game">Nuevo juego</button>
     <button id="lang-switch">🌐</button>
+    <button id="mode-toggle">🔢</button>
     <button id="sound-toggle">🔊</button>
   </div>
 </header>
@@ -258,36 +263,78 @@
 <script>
   const LANGS = {
     es: {
-      title: "Memorama del Abecedario 🔤",
       newGameBtn: "Nuevo juego",
       winMsg: "¡Muy bien! 🎉",
       playAgainBtn: "Jugar otra vez",
       ttsLang: "es-MX",
-      imgFolder: "images",
-      letters: {
-        A: "a", B: "be", C: "ce", D: "de", E: "e", F: "efe",
-        G: "ge", H: "hache", I: "i", J: "jota", K: "ka", L: "ele",
-        M: "eme", N: "ene", "Ñ": "eñe", O: "o", P: "pe", Q: "cu",
-        R: "erre", S: "ese", T: "te", U: "u", V: "ve", W: "doble u",
-        X: "equis", Y: "ye", Z: "zeta"
+      modes: {
+        alpha: {
+          title: "Memorama del Abecedario 🔤",
+          imgFolder: "images",
+          slots: ["image", "symbol"],
+          items: {
+            A: "a", B: "be", C: "ce", D: "de", E: "e", F: "efe",
+            G: "ge", H: "hache", I: "i", J: "jota", K: "ka", L: "ele",
+            M: "eme", N: "ene", "Ñ": "eñe", O: "o", P: "pe", Q: "cu",
+            R: "erre", S: "ese", T: "te", U: "u", V: "ve", W: "doble u",
+            X: "equis", Y: "ye", Z: "zeta"
+          }
+        },
+        numbers: {
+          title: "Memorama de Números 🔢",
+          slots: ["symbol", "word"],
+          items: {
+            0: "cero", 1: "uno", 2: "dos", 3: "tres", 4: "cuatro",
+            5: "cinco", 6: "seis", 7: "siete", 8: "ocho", 9: "nueve", 10: "diez",
+            11: "once", 12: "doce", 13: "trece", 14: "catorce", 15: "quince",
+            16: "dieciséis", 17: "diecisiete", 18: "dieciocho", 19: "diecinueve", 20: "veinte",
+            21: "veintiuno", 22: "veintidós", 23: "veintitrés", 24: "veinticuatro", 25: "veinticinco",
+            26: "veintiséis", 27: "veintisiete", 28: "veintiocho", 29: "veintinueve", 30: "treinta",
+            31: "treinta y uno", 32: "treinta y dos", 33: "treinta y tres", 34: "treinta y cuatro", 35: "treinta y cinco",
+            36: "treinta y seis", 37: "treinta y siete", 38: "treinta y ocho", 39: "treinta y nueve", 40: "cuarenta",
+            50: "cincuenta", 60: "sesenta", 70: "setenta", 80: "ochenta", 90: "noventa", 100: "cien"
+          }
+        }
       }
     },
     en: {
-      title: "Alphabet Memory Game 🔤",
       newGameBtn: "New game",
       winMsg: "Great job! 🎉",
       playAgainBtn: "Play again",
       ttsLang: "en-US",
-      imgFolder: "images/en",
-      letters: {
-        A: "A", B: "B", C: "C", D: "D", E: "E", F: "F",
-        G: "G", H: "H", I: "I", J: "J", K: "K", L: "L",
-        M: "M", N: "N", O: "O", P: "P", Q: "Q",
-        R: "R", S: "S", T: "T", U: "U", V: "V", W: "W",
-        X: "X", Y: "Y", Z: "Z"
+      modes: {
+        alpha: {
+          title: "Alphabet Memory Game 🔤",
+          imgFolder: "images/en",
+          slots: ["image", "symbol"],
+          items: {
+            A: "A", B: "B", C: "C", D: "D", E: "E", F: "F",
+            G: "G", H: "H", I: "I", J: "J", K: "K", L: "L",
+            M: "M", N: "N", O: "O", P: "P", Q: "Q",
+            R: "R", S: "S", T: "T", U: "U", V: "V", W: "W",
+            X: "X", Y: "Y", Z: "Z"
+          }
+        },
+        numbers: {
+          title: "Numbers Memory Game 🔢",
+          slots: ["symbol", "word"],
+          items: {
+            0: "zero", 1: "one", 2: "two", 3: "three", 4: "four",
+            5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+            11: "eleven", 12: "twelve", 13: "thirteen", 14: "fourteen", 15: "fifteen",
+            16: "sixteen", 17: "seventeen", 18: "eighteen", 19: "nineteen", 20: "twenty",
+            21: "twenty-one", 22: "twenty-two", 23: "twenty-three", 24: "twenty-four", 25: "twenty-five",
+            26: "twenty-six", 27: "twenty-seven", 28: "twenty-eight", 29: "twenty-nine", 30: "thirty",
+            31: "thirty-one", 32: "thirty-two", 33: "thirty-three", 34: "thirty-four", 35: "thirty-five",
+            36: "thirty-six", 37: "thirty-seven", 38: "thirty-eight", 39: "thirty-nine", 40: "forty",
+            50: "fifty", 60: "sixty", 70: "seventy", 80: "eighty", 90: "ninety", 100: "one hundred"
+          }
+        }
       }
     }
   };
+
+  const MODE_ICONS = { alpha: "🔢", numbers: "🔤" };
 
   const LETTER_COLORS = ["#ff8a8a", "#ffb347", "#8bd17c", "#6ec3f4"];
   const PAIRS_PER_GAME = 8;
@@ -298,12 +345,17 @@
   const header = document.querySelector('header');
 
   let lang = null;
-  let allLetters = [];
+  let mode = 'alpha';
+  let allKeys = [];
   let flipped = [];
   let lock = false;
   let matchedCount = 0;
   let cards = [];
   let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+
+  function currentMode() {
+    return LANGS[lang].modes[mode];
+  }
 
   function shuffle(arr) {
     const a = arr.slice();
@@ -355,17 +407,22 @@
 
     const front = document.createElement('div');
     front.className = 'card-face card-front';
+    const color = LETTER_COLORS[allKeys.indexOf(card.key) % LETTER_COLORS.length];
 
-    if (card.type === 'image') {
+    if (card.slot === 'image') {
       const img = document.createElement('img');
-      img.src = `${LANGS[lang].imgFolder}/${card.letter}.webp`;
-      img.alt = card.letter;
+      img.src = `${currentMode().imgFolder}/${card.key}.webp`;
+      img.alt = card.key;
       img.draggable = false;
       front.appendChild(img);
-    } else {
+    } else if (card.slot === 'symbol') {
       front.classList.add('letter-face');
-      front.textContent = card.letter;
-      front.style.color = LETTER_COLORS[allLetters.indexOf(card.letter) % LETTER_COLORS.length];
+      front.textContent = card.key;
+      front.style.color = color;
+    } else {
+      front.classList.add('word-face');
+      front.textContent = currentMode().items[card.key];
+      front.style.color = color;
     }
 
     inner.appendChild(back);
@@ -383,11 +440,12 @@
     matchedCount = 0;
     winBanner.classList.remove('show');
 
-    const chosenLetters = shuffle(allLetters).slice(0, PAIRS_PER_GAME);
+    const [slotA, slotB] = currentMode().slots;
+    const chosenKeys = shuffle(allKeys).slice(0, PAIRS_PER_GAME);
     const rawCards = [];
-    chosenLetters.forEach(letter => {
-      rawCards.push({ letter, type: 'image' });
-      rawCards.push({ letter, type: 'letter' });
+    chosenKeys.forEach(key => {
+      rawCards.push({ key, slot: slotA });
+      rawCards.push({ key, slot: slotB });
     });
     cards = shuffle(rawCards);
 
@@ -405,12 +463,12 @@
 
     cardEl.classList.add('flipped');
     playFlipSound();
-    speak(LANGS[lang].letters[cards[index].letter]);
+    speak(currentMode().items[cards[index].key]);
     flipped.push(index);
 
     if (flipped.length === 2) {
       const [i1, i2] = flipped;
-      if (cards[i1].letter === cards[i2].letter) {
+      if (cards[i1].key === cards[i2].key) {
         lock = true;
         setTimeout(() => {
           grid.children[i1].classList.add('matched');
@@ -436,17 +494,31 @@
 
   function selectLang(code) {
     lang = code;
-    allLetters = Object.keys(LANGS[code].letters);
-    document.getElementById('title').textContent = LANGS[code].title;
+    mode = 'alpha';
+    allKeys = Object.keys(LANGS[code].modes.alpha.items);
+    document.getElementById('title').textContent = currentMode().title;
     document.getElementById('new-game').textContent = LANGS[code].newGameBtn;
     document.getElementById('win-msg').textContent = LANGS[code].winMsg;
     document.getElementById('play-again').textContent = LANGS[code].playAgainBtn;
     document.documentElement.lang = LANGS[code].ttsLang;
+    updateModeButton();
 
     langScreen.classList.add('hidden');
     header.classList.remove('hidden');
     grid.classList.remove('hidden');
 
+    newGame();
+  }
+
+  function updateModeButton() {
+    document.getElementById('mode-toggle').textContent = MODE_ICONS[mode];
+  }
+
+  function toggleMode() {
+    mode = mode === 'alpha' ? 'numbers' : 'alpha';
+    allKeys = Object.keys(currentMode().items);
+    document.getElementById('title').textContent = currentMode().title;
+    updateModeButton();
     newGame();
   }
 
@@ -477,6 +549,7 @@
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('play-again').addEventListener('click', newGame);
   document.getElementById('lang-switch').addEventListener('click', showLangScreen);
+  document.getElementById('mode-toggle').addEventListener('click', toggleMode);
   document.getElementById('sound-toggle').addEventListener('click', toggleSound);
   updateSoundButton();
 
